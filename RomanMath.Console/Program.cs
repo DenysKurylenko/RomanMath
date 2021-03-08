@@ -12,7 +12,13 @@ namespace RomanMath.Console
 		/// <param name="args"></param>
 		static void Main(string[] args)
         {
-			//var result = Service.Evaluate("IV+II/V");
+            while (true)
+            {
+				var input = System.Console.ReadLine();
+                var result = Service.Evaluate(input);
+				System.Console.WriteLine(result);
+			}
+            
 			System.Console.ReadKey();
 		}
 	}

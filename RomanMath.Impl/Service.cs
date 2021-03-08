@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace RomanMath.Impl
 {
@@ -21,14 +22,13 @@ namespace RomanMath.Impl
             expression = expression.Trim();
             if (expression.Length == 0) throw new ArgumentException("Expression can't be empty");
 
-            if (
-                Regex.IsMatch(expression,
-                    @"[^\+\-\*MDCLXVI] || [IX]{2,}[MDCLV] || [VLD]{2,} || [IXCM]{3,} || [+-[*]]{2,}") ||
-                !Regex.IsMatch(expression, @"^(?:[MDCLXVI]+[\+\-\*])+[MDCLXVI]$")
-            )
-            {
-                throw new ArgumentException("Expression is incorrect");
-            }
+            if (Regex.IsMatch(expression, @"[^\+\-\*MDCLXVI]") ||
+                Regex.IsMatch(expression, @"[IX]{2,}[MDCLV]") ||
+                Regex.IsMatch(expression, @"[VLD]{2,}") ||
+                Regex.IsMatch(expression, @"[IXCM]{4,}") ||
+                Regex.IsMatch(expression, @"[\+\-\*]{2}") ||
+                !Regex.IsMatch(expression, @"^(?:[MDCLXVI]+[\+\-\*])+[MDCLXVI]$")) throw new ArgumentException("Expression is incorrect");
+
 
             var numberRegex = new Regex(@"[MDCLXVI]+");
             var romanNumbers = numberRegex.Matches(expression);
@@ -38,12 +38,13 @@ namespace RomanMath.Impl
                 digitNumbers.Add(ConvertRomanToDigit(romanNumber.ToString()));
             }
 
-            var operationRegex = new Regex(@"[\+\-\*]{2}");
+            var operationRegex = new Regex(@"[\+\-\*]");
             var operations = operationRegex.Matches(expression);
             var operationArray = new List<char>();
             foreach (var operation in operations)
             {
-                operationArray.Add(Convert.ToChar(operation));
+                var item = operation.ToString();
+                operationArray.Add(item[0]);
             }
 
             return Calculate(digitNumbers, operationArray);
@@ -52,7 +53,6 @@ namespace RomanMath.Impl
 
         private static int ConvertRomanToDigit(string romanNumbers)
         {
-            var digitResult = 0;
             var convertor = new Dictionary<char, int>()
             {
                 {'I', 1},
@@ -61,40 +61,31 @@ namespace RomanMath.Impl
                 {'L', 50},
                 {'C', 100},
                 {'D', 500},
-                {'L', 1000},
+                {'M', 1000},
             };
             if (romanNumbers.Length == 1) return convertor[romanNumbers[0]];
-            var digitNumbers = new int[romanNumbers.Length];
 
-            var iterator = 0;
+            var digitNumbers = new List<int>();
+
             foreach (var romanNumber in romanNumbers)
             {
-                digitNumbers[iterator] = convertor[romanNumber];
-                iterator++;
+                digitNumbers.Add(convertor[romanNumber]);
             }
             
-            for (var i = 0; i < digitNumbers.Length; i++)
+            for (var i = 0; i < digitNumbers.Count-1; i++)
             {
-                if (digitNumbers[i] == 1 || digitNumbers[i] == 10)
+
+                if (digitNumbers[i].CompareTo(digitNumbers[i + 1]) < 0 && (digitNumbers[i] == 1 || digitNumbers[i] == 10))
                 {
-                    switch (digitNumbers[i].CompareTo(digitNumbers[i + 1]))
-                    {
-                        case -1:
-                            digitResult += digitNumbers[i + 1] - digitNumbers[i];
-                            i++;
-                            break;
-                        case 1:
-                            digitResult += digitNumbers[i + 1] + digitNumbers[i];
-                            i++;
-                            break;
-                        default:
-                            digitResult += digitNumbers[i];
-                            break;
-                    }
+                    digitNumbers[i + 1] = digitNumbers[i + 1] - digitNumbers[i];
+                }
+                else
+                {
+                    digitNumbers[i + 1] += digitNumbers[i];
                 }
             }
 
-            return digitResult;
+            return digitNumbers.Last();
         }
 
         private static int Calculate(List<int> numbers, List<char> operations)
@@ -108,14 +99,13 @@ namespace RomanMath.Impl
                 numbers.RemoveAt(index+1);
             }
 
-            if (operations.Count > 1)
+            var count = 0;
+            while (operations.Count > count)
             {
-                for (int i = 0; i < operations.Count; i++)
-                {
-                    if (operations[i] == '+')
-                        numbers[i + 1] += numbers[i];
-                    else numbers[i + 1] = numbers[i] - numbers[i + 1];
-                }
+                if (operations[count] == '+')
+                    numbers[count + 1] += numbers[count];
+                else numbers[count + 1] = numbers[count] - numbers[count + 1];
+                count++;
             }
             return numbers.Last();
         }
